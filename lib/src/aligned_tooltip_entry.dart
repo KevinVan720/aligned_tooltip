@@ -1,12 +1,12 @@
-part of './just_the_tooltip.dart';
+part of './aligned_tooltip.dart';
 
 /// A Tooltip widget that delegates to creation and use of the tooltip and
-/// skrim to the outer [JustTheTooltipArea]. This class is useless if not
-/// nested within a [JustTheTooltipArea].
+/// skrim to the outer [AlignedTooltipArea]. This class is useless if not
+/// nested within a [AlignedTooltipArea].
 ///
 /// {@macro just_the_tooltip.overlay.constructor}
-class JustTheTooltipEntry extends StatefulWidget implements JustTheInterface {
-  const JustTheTooltipEntry({
+class AlignedTooltipEntry extends StatefulWidget implements AlignedTooltipInterface {
+  const AlignedTooltipEntry({
     super.key,
     required this.content,
     required this.child,
@@ -33,9 +33,9 @@ class JustTheTooltipEntry extends StatefulWidget implements JustTheInterface {
     this.borderRadius = const BorderRadius.all(Radius.circular(6)),
     this.tailLength = 16.0,
     this.tailBaseWidth = 32.0,
-    this.tailBuilder = JustTheInterface.defaultTailBuilder,
+    this.tailBuilder = AlignedTooltipInterface.defaultTailBuilder,
     this.animatedTransitionBuilder =
-        JustTheInterface.defaultAnimatedTransitionBuilder,
+        AlignedTooltipInterface.defaultAnimatedTransitionBuilder,
     this.backgroundColor,
     this.textDirection = TextDirection.ltr,
     this.shadow,
@@ -44,7 +44,7 @@ class JustTheTooltipEntry extends StatefulWidget implements JustTheInterface {
   });
 
   @override
-  final JustTheController? controller;
+  final AlignedTooltipController? controller;
 
   @override
   final Widget content;
@@ -141,12 +141,12 @@ class JustTheTooltipEntry extends StatefulWidget implements JustTheInterface {
   final ScrollController? scrollController;
 
   @override
-  JustTheTooltipState<Widget> createState() => _JustTheTooltipEntryState();
+  AlignedTooltipState<Widget> createState() => _AlignedTooltipEntryState();
 }
 
 // TODO: I think I want notifications instead... I'm really not sure
 // https://stackoverflow.com/a/65854697/8213910
-class _JustTheTooltipEntryState extends JustTheTooltipState<Widget> {
+class _AlignedTooltipEntryState extends AlignedTooltipState<Widget> {
   InheritedTooltipArea? area;
 
   @override
@@ -192,7 +192,7 @@ class _JustTheTooltipEntryState extends JustTheTooltipState<Widget> {
     final entry = _createEntry();
     final skrim = _createSkrim();
 
-    final tooltipArea = JustTheTooltipArea.of(context);
+    final tooltipArea = AlignedTooltipArea.of(context);
 
     tooltipArea.setEntries(entry: entry, skrim: skrim);
   }
@@ -201,7 +201,7 @@ class _JustTheTooltipEntryState extends JustTheTooltipState<Widget> {
     final entry = _createEntry();
     final skrim = _createSkrim();
 
-    final tooltipArea = JustTheTooltipArea.of(context);
+    final tooltipArea = AlignedTooltipArea.of(context);
 
     tooltipArea.updateEntries(entry: entry, skrim: skrim);
   }
@@ -215,7 +215,7 @@ class _JustTheTooltipEntryState extends JustTheTooltipState<Widget> {
   }
 
   @override
-  void didUpdateWidget(covariant JustTheInterface oldWidget) {
+  void didUpdateWidget(covariant AlignedTooltipInterface oldWidget) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateEntries();
     });

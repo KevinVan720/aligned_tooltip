@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:just_the_tooltip/src/utils/get_axis_direction.dart';
-import 'package:just_the_tooltip/src/utils/get_position_dependent_offset.dart';
+import 'package:aligned_tooltip/src/utils/get_axis_direction.dart';
+import 'package:aligned_tooltip/src/utils/get_position_dependent_offset.dart';
 
 typedef TailBuilder = Path Function(
   Offset point1,

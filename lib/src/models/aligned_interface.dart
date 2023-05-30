@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:just_the_tooltip/src/models/just_the_controller.dart';
-import 'package:just_the_tooltip/src/positioned_tooltip.dart';
+import 'package:aligned_tooltip/src/models/aligned_controller.dart';
+import 'package:aligned_tooltip/src/positioned_tooltip.dart';
 
 typedef ContentBuilder = Widget Function(BuildContext context, Widget content);
 
@@ -17,8 +17,8 @@ typedef ContentBuilder = Widget Function(BuildContext context, Widget content);
 /// is set to true. The effect is to mimic the behavior of a traditional modal
 /// that is only closed by tapping on the target widget or outside the screen.
 /// {@endtemplate}
-abstract class JustTheInterface extends StatefulWidget {
-  const JustTheInterface({Key? key}) : super(key: key);
+abstract class AlignedTooltipInterface extends StatefulWidget {
+  const AlignedTooltipInterface({Key? key}) : super(key: key);
 
   static SingleChildRenderObjectWidget defaultAnimatedTransitionBuilder(
     BuildContext context,
@@ -71,7 +71,7 @@ abstract class JustTheInterface extends StatefulWidget {
 
   /// Imperitive controller for handling the state the interface is in. If one
   /// is not provided a controller will be made.
-  JustTheController? get controller;
+  AlignedTooltipController? get controller;
 
   /// The content of the tooltip. Content must be collapsed so it does not
   /// exceed it's constraints. The content's intrinsic `size` is used to first

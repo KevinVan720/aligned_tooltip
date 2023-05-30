@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:just_the_tooltip/just_the_tooltip.dart';
+import 'package:aligned_tooltip/aligned_tooltip.dart';
 
 void _ensureTooltipVisible(GlobalKey key) {
   // This function uses "as dynamic"to defeat the static analysis. In general
@@ -56,7 +56,7 @@ void main() {
                     Positioned(
                       left: 300.0,
                       top: 0.0,
-                      child: JustTheTooltip(
+                      child: AlignedTooltip(
                         key: key,
                         offset: 20.0,
                         tailLength: 0.0,
@@ -119,7 +119,7 @@ void main() {
                       Positioned(
                         left: 300.0,
                         top: 0.0,
-                        child: JustTheTooltip(
+                        child: AlignedTooltip(
                           key: key,
                           content: const Text(tooltipText),
                           offset: 20.0,
@@ -182,7 +182,7 @@ void main() {
   //                   Positioned(
   //                     left: 0.0,
   //                     top: 0.0,
-  //                     child: JustTheTooltip(
+  //                     child: AlignedTooltip(
   //                       key: key,
   //                       content: const Text(tooltipText),
   //                       offset: 20.0,

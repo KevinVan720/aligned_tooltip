@@ -14,7 +14,7 @@ typedef TooltipBuilder = Widget Function(
 );
 
 class InheritedTooltipArea extends InheritedWidget {
-  final JustTheTooltipAreaState data;
+  final AlignedTooltipAreaState data;
 
   const InheritedTooltipArea({
     super.key,
@@ -29,18 +29,18 @@ class InheritedTooltipArea extends InheritedWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<JustTheTooltipAreaState>('data', data));
+    properties.add(DiagnosticsProperty<AlignedTooltipAreaState>('data', data));
   }
 }
 
-class JustTheTooltipArea extends StatefulWidget {
+class AlignedTooltipArea extends StatefulWidget {
   final TooltipBuilder builder;
 
-  const JustTheTooltipArea({super.key, required this.builder});
+  const AlignedTooltipArea({super.key, required this.builder});
 
   /// Used to retrieve the scope of the tooltip. This scope is responsible for
-  /// managing the children `JustTheTooltip`s
-  static JustTheTooltipAreaState of(BuildContext context) {
+  /// managing the children `AlignedTooltip`s
+  static AlignedTooltipAreaState of(BuildContext context) {
     final scope =
         context.dependOnInheritedWidgetOfExactType<InheritedTooltipArea>();
 
@@ -48,9 +48,9 @@ class JustTheTooltipArea extends StatefulWidget {
       () {
         if (scope == null) {
           throw FlutterError(
-            'JustTheTooltipArea operation requested with a context that does not '
-            'include a JustTheTooltipArea.\n Make sure you wrapped your'
-            'JustTheTooltip.entry children inside a JustTheTooltipArea',
+            'AlignedTooltipArea operation requested with a context that does not '
+            'include a AlignedTooltipArea.\n Make sure you wrapped your'
+            'AlignedTooltip.entry children inside a AlignedTooltipArea',
           );
         }
         return true;
@@ -60,7 +60,7 @@ class JustTheTooltipArea extends StatefulWidget {
     return scope!.data;
   }
 
-  static JustTheTooltipAreaState? maybeOf(BuildContext context) {
+  static AlignedTooltipAreaState? maybeOf(BuildContext context) {
     final scope =
         context.dependOnInheritedWidgetOfExactType<InheritedTooltipArea>();
 
@@ -68,17 +68,17 @@ class JustTheTooltipArea extends StatefulWidget {
   }
 
   @override
-  State<JustTheTooltipArea> createState() => JustTheTooltipAreaState();
+  State<AlignedTooltipArea> createState() => AlignedTooltipAreaState();
 }
 
 // TODO: Change the logic here eventually to something cleaner.
-/// This parent child works around the fact that the [JustTheTooltipEntry] will
+/// This parent child works around the fact that the [AlignedTooltipEntry] will
 /// send updates to here and thus manage the state. We must create listenable
 /// wrappers aruond the skrim and entry as otherwise, when we update this parent
 /// from the child, that would trigger a rebuild of the child... Which, without
 /// fancy logic, would cause this parent to rebuild again. To avoid that, we
 /// instead update the listeners and they then only update their state.
-class JustTheTooltipAreaState extends State<JustTheTooltipArea> {
+class AlignedTooltipAreaState extends State<AlignedTooltipArea> {
   var entry = ValueNotifier<Widget?>(null);
   var skrim = ValueNotifier<Widget?>(null);
 
@@ -109,7 +109,7 @@ class JustTheTooltipAreaState extends State<JustTheTooltipArea> {
   Widget build(BuildContext context) {
     return InheritedTooltipArea(
       data: this,
-      // This Builder allows direct children to call `JustTheTooltipArea.of`
+      // This Builder allows direct children to call `AlignedTooltipArea.of`
       // without requiring a builder themselves.
       child: Builder(
         builder: (context) {

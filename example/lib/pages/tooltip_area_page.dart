@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:just_the_tooltip/just_the_tooltip.dart';
+import 'package:aligned_tooltip/aligned_tooltip.dart';
 
 class TooltipAreaExamplePage extends StatefulWidget {
   const TooltipAreaExamplePage({Key? key}) : super(key: key);
@@ -31,7 +31,7 @@ class _TooltipAreaExamplePageState extends State<TooltipAreaExamplePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('It goes under me')),
-      body: JustTheTooltipArea(
+      body: AlignedTooltipArea(
         builder: (context, tooltip, scrim) {
           return Stack(
             fit: StackFit.passthrough,
@@ -42,7 +42,7 @@ class _TooltipAreaExamplePageState extends State<TooltipAreaExamplePage> {
                   40,
                   (index) {
                     if (index == 15) {
-                      return JustTheTooltipEntry(
+                      return AlignedTooltipEntry(
                         scrollController: scrollController,
                         isModal: true,
                         tailLength: 20.0,

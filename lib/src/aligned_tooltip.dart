@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:just_the_tooltip/just_the_tooltip.dart';
-import 'package:just_the_tooltip/src/models/target_information.dart';
-import 'package:just_the_tooltip/src/positioned_tooltip.dart';
+import 'package:aligned_tooltip/aligned_tooltip.dart';
+import 'package:aligned_tooltip/src/models/target_information.dart';
+import 'package:aligned_tooltip/src/positioned_tooltip.dart';
 
-part 'just_the_tooltip_entry.dart';
+part 'aligned_tooltip_entry.dart';
 
 typedef ShowTooltip = Future<void> Function({
   bool immediately,
@@ -18,9 +18,9 @@ typedef ShowTooltip = Future<void> Function({
 
 typedef HideTooltip = Future<void> Function({bool immediately});
 
-/// {@macro just_the_tooltip.overlay.constructor}
-class JustTheTooltip extends StatefulWidget implements JustTheInterface {
-  const JustTheTooltip({
+/// {@macro aligned_tooltip.overlay.constructor}
+class AlignedTooltip extends StatefulWidget implements AlignedTooltipInterface {
+  const AlignedTooltip({
     Key? key,
     required this.content,
     required this.child,
@@ -50,9 +50,9 @@ class JustTheTooltip extends StatefulWidget implements JustTheInterface {
     this.borderRadius = const BorderRadius.all(Radius.circular(6)),
     this.tailLength = 16.0,
     this.tailBaseWidth = 32.0,
-    this.tailBuilder = JustTheInterface.defaultTailBuilder,
+    this.tailBuilder = AlignedTooltipInterface.defaultTailBuilder,
     this.animatedTransitionBuilder =
-        JustTheInterface.defaultAnimatedTransitionBuilder,
+        AlignedTooltipInterface.defaultAnimatedTransitionBuilder,
     this.backgroundColor,
     this.textDirection = TextDirection.ltr,
     this.shadow,
@@ -61,7 +61,7 @@ class JustTheTooltip extends StatefulWidget implements JustTheInterface {
   }) : super(key: key);
 
   @override
-  final JustTheController? controller;
+  final AlignedTooltipController? controller;
 
   @override
   final Widget content;
@@ -159,11 +159,11 @@ class JustTheTooltip extends StatefulWidget implements JustTheInterface {
   final ScrollController? scrollController;
 
   @override
-  JustTheTooltipState<OverlayEntry> createState() =>
-      _JustTheTooltipOverlayState();
+  AlignedTooltipState<OverlayEntry> createState() =>
+      _AlignedTooltipOverlayState();
 }
 
-class _JustTheTooltipOverlayState extends JustTheTooltipState<OverlayEntry> {
+class _AlignedTooltipOverlayState extends AlignedTooltipState<OverlayEntry> {
   @override
   OverlayEntry? entry;
 
@@ -249,7 +249,7 @@ class _JustTheTooltipOverlayState extends JustTheTooltipState<OverlayEntry> {
   }
 
 // @override
-// void didUpdateWidget(covariant JustTheTooltip oldWidget) {
+// void didUpdateWidget(covariant AlignedTooltip oldWidget) {
 //   super.didUpdateWidget(oldWidget);
 
 //   // This adds a post frame callback because otherwise the OverlayEntry
@@ -268,7 +268,7 @@ class _JustTheTooltipOverlayState extends JustTheTooltipState<OverlayEntry> {
 /// for the fact it is setup to handle two Tooltip cases. Abstract methods are
 /// replaced with implementations that are specific to the tooltip type.
 // TODO: This looks more idiomatic as a mixin.
-abstract class JustTheTooltipState<T> extends State<JustTheInterface>
+abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
     with SingleTickerProviderStateMixin {
   T? get entry;
 
@@ -326,10 +326,10 @@ abstract class JustTheTooltipState<T> extends State<JustTheInterface>
   late Widget Function(BuildContext, Animation<double>, VoidCallback)?
       barrierBuilder;
 
-  // These properties are specific to just_the_tooltip
+  // These properties are specific to aligned_tooltip
   // static const Curve _defaultAnimateCurve = Curves.linear;
   // static const Duration _defaultAnimateDuration = Duration(milliseconds: 1000);
-  late JustTheController _controller;
+  late AlignedTooltipController _controller;
   late bool _hasBindingListeners = false;
   final _layerLink = LayerLink();
 
@@ -353,13 +353,13 @@ abstract class JustTheTooltipState<T> extends State<JustTheInterface>
       vsync: this,
     )..addStatusListener(_handleStatusChanged);
 
-    _controller = widget.controller ?? JustTheController();
+    _controller = widget.controller ?? AlignedTooltipController();
     _attachController(_controller);
   }
 
   /// This sucker just gives the controller the newest versions of the
   /// callbacks we have in this state.
-  void _attachController(JustTheController controller) {
+  void _attachController(AlignedTooltipController controller) {
     controller.attach(
       showTooltip: _showTooltip,
       hideTooltip: _hideTooltip,
@@ -367,7 +367,7 @@ abstract class JustTheTooltipState<T> extends State<JustTheInterface>
   }
 
   @override
-  void didUpdateWidget(covariant JustTheInterface oldWidget) {
+  void didUpdateWidget(covariant AlignedTooltipInterface oldWidget) {
     final oldController = oldWidget.controller;
     final newController = widget.controller;
 

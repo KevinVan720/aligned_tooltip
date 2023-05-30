@@ -14,7 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  just_the_tooltip:
+  aligned_tooltip:
     path: ../
 
 dev_dependencies:

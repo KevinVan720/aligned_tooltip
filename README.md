@@ -1,19 +1,15 @@
-# just_the_tooltip
+# aligned_tooltip
 
-`just_the_tooltip` gives you more flexibility over the Flutter standard `Tooltip` by allowing you to set arbitrary content. It also expands on their single axis layout algorithm to fit both vertically and horizontally. The tooltip can be positioned along any axis and will fall back to the opposite side if overflowed.
+`aligned_tooltip` gives you more flexibility over the Flutter standard `Tooltip` by allowing you to set arbitrary content. It also expands on their single axis layout algorithm to fit both vertically and horizontally. The tooltip can be positioned along any axis and will fall back to the opposite side if overflowed.
 
 ## Breaking
 
-* Removed `JustTheTooltip.entry` named constructor in favor of dedicated widget `JustTheTooltipEntry`. This mirrors a change in the code that explicitly differentiates where and how tooltips are shown.
+Right now this package is a direct fork of this package: https://pub.dev/packages/just_the_tooltip. We will update this package to support more features in the future.
 
 ## Getting Started
 
-<p>  
- <img src="https://github.com/Nolence/just_the_tooltip/blob/main/screenshots/ezgif-2-3ef406bb2022.gif?raw=true" width="320" height="568"/>
-</p>
-
 ```dart
-JustTheTooltip(
+AlignedTooltip(
   child: Material(
     color: Colors.grey.shade800,
     shape: const CircleBorder(),
@@ -35,14 +31,14 @@ JustTheTooltip(
 )
 ```
 
-JustTheTooltip needs two arguments. The direct child widget and the content (of the tooltip).  The `child` widget will be wrapped with a `GestureDetector` or `MouseRegion` that is responsible for showing and hiding the content. Further handling of the tooltip state can be managed explicitly through a controller:
+AlignedTooltip needs two arguments. The direct child widget and the content (of the tooltip).  The `child` widget will be wrapped with a `GestureDetector` or `MouseRegion` that is responsible for showing and hiding the content. Further handling of the tooltip state can be managed explicitly through a controller:
 
-If you'd like to create a controller to manage the state of the tooltip, you can do so by defining an instance of a `JustTheController` and pass it through to constructor.
+If you'd like to create a controller to manage the state of the tooltip, you can do so by defining an instance of a `AlignedController` and pass it through to constructor.
 
 ```dart
-final tooltipController = JustTheController();
+final tooltipController = AlignedController();
 
-child: JustTheTooltip(
+child: AlignedTooltip(
   controller: tooltipController,
   // ...
 )
@@ -72,7 +68,7 @@ void initState() {
 If you'd like to simply react to open or close states, you can pass through `onDismiss` or `onShow` callbacks to the default constructor.
 
 ```dart
-JustTheTooltip(
+AlignedTooltip(
   onDismiss: () {
     // Maybe continue tutorial?
   },
@@ -100,7 +96,7 @@ The fallback used when no mouse region is present but `isModal` is false is to o
 
 * Tail Builder
 
-If you'd like a custom tail (the nub on the end dialog bubble) drawn on your tooltip, you can pass through your own tailBuilder. The `JustTheInterface.defaultTailBuilder` (default) shows how to simply draw and return a path for your custom tails:
+If you'd like a custom tail (the nub on the end dialog bubble) drawn on your tooltip, you can pass through your own tailBuilder. The `AlignedInterface.defaultTailBuilder` (default) shows how to simply draw and return a path for your custom tails:
 
 ```dart
 Path defaultTailBuilder(Offset tip, Offset point2, Offset point3) {
@@ -112,7 +108,7 @@ Path defaultTailBuilder(Offset tip, Offset point2, Offset point3) {
 }
 ```
 
-The library also provides a simple bezier curved tailbuilder `JustTheInterface.defaultBezierTailBuilder`.
+The library also provides a simple bezier curved tailbuilder `AlignedInterface.defaultBezierTailBuilder`.
 
 
 * ListViews
@@ -121,12 +117,12 @@ The tooltip should also work in lists and follow the target through scrolling. F
 
 * Non-Overlay Tooltip
 
-For use cases where the tooltip must be a part the widget tree rather than an overlay there is a `JustTheTooltipEntry`.
+For use cases where the tooltip must be a part the widget tree rather than an overlay there is a `AlignedTooltipEntry`.
 
 ```dart
 Scaffold(
   appBar: AppBar(title: const Text('It goes under me')),
-  body: JustTheTooltipArea(
+  body: AlignedTooltipArea(
     builder: (context, tooltip, scrim) {
       return Stack(
         fit: StackFit.passthrough,
@@ -135,7 +131,7 @@ Scaffold(
             itemCount: 30,
             itemBuilder: (context, index) {
               if (index == 15) {
-                return JustTheTooltipEntry(
+                return AlignedTooltipEntry(
                   tailLength: 10.0,
                   preferredDirection: AxisDirection.down,
                   isModal: true,

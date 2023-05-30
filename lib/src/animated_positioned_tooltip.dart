@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:just_the_tooltip/src/positioned_tooltip.dart';
+import 'package:aligned_tooltip/src/positioned_tooltip.dart';
 
 class AnimatedTooltip extends ImplicitlyAnimatedWidget {
   const AnimatedTooltip({

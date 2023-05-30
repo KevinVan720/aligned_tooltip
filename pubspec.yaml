@@ -1,8 +1,7 @@
-name: just_the_tooltip
-description: A multi directional tooltip used to display any content with
-  inbuilt support for list views
-version: 0.0.12
-homepage: https://github.com/Nolence/just_the_tooltip
+name: aligned_tooltip
+description: A multi directional tooltip used to display any content
+version: 0.0.1
+homepage: https://github.com/KevinVan720/aligned_tooltip
 
 environment:
   sdk: ">=2.17.0 <3.0.0"

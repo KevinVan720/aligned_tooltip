@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:just_the_tooltip/just_the_tooltip.dart';
+import 'package:aligned_tooltip/aligned_tooltip.dart';
 
 class DefaultPageExample extends StatefulWidget {
   const DefaultPageExample({Key? key}) : super(key: key);
@@ -9,7 +9,7 @@ class DefaultPageExample extends StatefulWidget {
 }
 
 class _DefaultPageExampleState extends State<DefaultPageExample> {
-  final tooltipController = JustTheController();
+  final tooltipController = AlignedTooltipController();
   var length = 10.0;
   var color = Colors.pink;
   var alignment = Alignment.center;
@@ -54,7 +54,7 @@ class _DefaultPageExampleState extends State<DefaultPageExample> {
         child: AnimatedAlign(
           duration: const Duration(milliseconds: 1500),
           alignment: alignment,
-          child: JustTheTooltip(
+          child: AlignedTooltip(
             onShow: () {
               // print('onShow');
             },
