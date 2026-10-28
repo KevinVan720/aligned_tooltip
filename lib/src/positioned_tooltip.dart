@@ -1,21 +1,25 @@
 import 'dart:math' as math;
 
+import 'package:aligned_tooltip/src/utils/get_axis_direction.dart';
+import 'package:aligned_tooltip/src/utils/get_position_dependent_offset.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:aligned_tooltip/src/utils/get_axis_direction.dart';
-import 'package:aligned_tooltip/src/utils/get_position_dependent_offset.dart';
 
+/// Builds the path of the tail of a tooltip from the tip of the tail
+/// ([point1]) and the two points of its base ([point2] and [point3]).
 typedef TailBuilder = Path Function(
   Offset point1,
   Offset point2,
   Offset point3,
 );
 
+/// Lays out and paints the bubble of a tooltip next to its target.
 class PositionedTooltip extends SingleChildRenderObjectWidget {
+  /// Creates a positioned tooltip.
   const PositionedTooltip({
-    Key? key,
-    required Widget child,
+    super.key,
+    required Widget super.child,
     required this.margin,
     required this.targetSize,
     required this.target,
@@ -32,7 +36,7 @@ class PositionedTooltip extends SingleChildRenderObjectWidget {
     required this.shadow,
     required this.elevation,
     required this.scrollPosition,
-  }) : super(key: key, child: child);
+  });
 
   final EdgeInsetsGeometry margin;
 
@@ -148,8 +152,10 @@ class PositionedTooltip extends SingleChildRenderObjectWidget {
   }
 }
 
+/// The render object of [PositionedTooltip].
 class RenderPositionedTooltip extends RenderShiftedBox
     with DebugOverflowIndicatorMixin {
+  /// Creates the render object of a [PositionedTooltip].
   RenderPositionedTooltip({
     RenderBox? child,
     required EdgeInsetsGeometry margin,
@@ -182,7 +188,8 @@ class RenderPositionedTooltip extends RenderShiftedBox
         _scrollPosition = scrollPosition,
         super(child);
 
-  late AxisDirection axisDirection;
+  /// The side of the target the tooltip is placed on, computed during layout.
+  late AxisDirection axisDirection = _preferredDirection;
 
   EdgeInsetsGeometry get margin => _margin;
   EdgeInsetsGeometry _margin;
@@ -302,34 +309,105 @@ class RenderPositionedTooltip extends RenderShiftedBox
   BoxConstraints get constraints => super.constraints.loosen();
 
   @override
-  Size computeDryLayout(BoxConstraints constraints) {
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    return _computeDryGeometry(constraints).size;
+  }
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    final maybeChild = child;
+    final geometry = _computeDryGeometry(constraints);
+    final childConstraints = geometry.childConstraints;
+    if (maybeChild == null || childConstraints == null) {
+      return null;
+    }
+
+    final childBaseline = maybeChild.getDryBaseline(childConstraints, baseline);
+    if (childBaseline == null) {
+      return null;
+    }
+    return childBaseline + geometry.childOffset.dy;
+  }
+
+  /// Computes what [performLayout] would do with [constraints], without
+  /// laying out the child.
+  ({Size size, Offset childOffset, BoxConstraints? childConstraints})
+      _computeDryGeometry(BoxConstraints constraints) {
+    // [performLayout] uses loosened constraints, see [constraints].
+    final looseConstraints = constraints.loosen();
     final maybeChild = child;
     final resolvedMargin = margin.resolve(textDirection);
 
     if (maybeChild == null) {
-      return constraints.constrain(resolvedMargin.collapsedSize);
+      return (
+        size: looseConstraints.constrain(resolvedMargin.collapsedSize),
+        childOffset: Offset.zero,
+        childConstraints: null,
+      );
     }
 
-    final childSize =
-        maybeChild.getDryLayout(constraints.deflate(resolvedMargin));
+    final childSize = _getChildIntrinsicSize(
+      maybeChild,
+      looseConstraints.deflate(resolvedMargin),
+    );
     final newAxisDirection = getAxisDirection(
       targetSize: targetSize,
       target: target,
       preferredDirection: preferredDirection,
       offsetAndTail: offsetAndTailLength,
       margin: resolvedMargin,
-      size: constraints.biggest,
+      size: looseConstraints.biggest,
       childSize: childSize,
       scrollPosition: scrollPosition,
     );
     final quadrantConstraints = _getQuadrantConstraints(
-      constraints,
+      looseConstraints,
       newAxisDirection,
       scrollPosition,
       resolvedMargin,
     );
+    final childDrySize = maybeChild.getDryLayout(quadrantConstraints);
 
-    return maybeChild.getDryLayout(quadrantConstraints);
+    final size = looseConstraints.constrain(
+      Size(
+        looseConstraints.maxWidth == double.infinity
+            ? childDrySize.width
+            : double.infinity,
+        looseConstraints.maxHeight == double.infinity
+            ? childDrySize.height
+            : double.infinity,
+      ),
+    );
+    final childOffset = getPositionDependentOffset(
+      axisDirection: newAxisDirection,
+      childSize: childDrySize,
+      margin: resolvedMargin,
+      offsetAndTail: offsetAndTailLength,
+      size: size,
+      target: target,
+      targetSize: targetSize,
+      scrollPosition: scrollPosition,
+    );
+
+    return (
+      size: size,
+      childOffset: childOffset,
+      childConstraints: quadrantConstraints,
+    );
+  }
+
+  /// The size used to decide on which side of the target the child goes.
+  Size _getChildIntrinsicSize(RenderBox child, BoxConstraints constraints) {
+    // TODO:
+    // final childSize = _child.getDryLayout(constraints.deflate(margin));
+    // Until https://github.com/flutter/flutter/issues/71687 is fixed, we must
+    // get child size via intrinsics :
+    final width = child.getMinIntrinsicWidth(constraints.maxHeight);
+    final height = child.getMinIntrinsicHeight(constraints.maxWidth);
+    return Size(width, height);
   }
 
   @override
@@ -342,15 +420,10 @@ class RenderPositionedTooltip extends RenderShiftedBox
       return;
     }
 
-    // TODO:
-    // final childSize = _child.getDryLayout(constraints.deflate(margin));
-    // Until https://github.com/flutter/flutter/issues/71687 is fixed, we must
-    // get child size via intrinsics :
-
-    final deflated = constraints.deflate(resolvedMargin);
-    final width = maybeChild.computeMinIntrinsicWidth(deflated.maxHeight);
-    final height = maybeChild.computeMinIntrinsicHeight(deflated.maxWidth);
-    final childSize = Size(width, height);
+    final childSize = _getChildIntrinsicSize(
+      maybeChild,
+      constraints.deflate(resolvedMargin),
+    );
 
     axisDirection = getAxisDirection(
       targetSize: targetSize,
@@ -363,7 +436,7 @@ class RenderPositionedTooltip extends RenderShiftedBox
       scrollPosition: scrollPosition,
     );
     final childParentData = maybeChild.parentData as BoxParentData;
-    var quadrantConstraints = _getQuadrantConstraints(
+    final quadrantConstraints = _getQuadrantConstraints(
       constraints,
       axisDirection,
       scrollPosition,

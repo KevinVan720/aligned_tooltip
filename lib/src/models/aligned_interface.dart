@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:aligned_tooltip/src/models/aligned_controller.dart';
 import 'package:aligned_tooltip/src/positioned_tooltip.dart';
 
+/// Signature of a function that wraps the [content] of a tooltip.
 typedef ContentBuilder = Widget Function(BuildContext context, Widget content);
 
-/// {@template just_the_tooltip.overlay.constructor}
+/// {@template aligned_tooltip.overlay.constructor}
 /// A widget to display a tooltip over target widget. The tooltip can be
 /// displayed on any axis of the widget and fallback to the opposite axis if
 /// the tooltip does cannot fit its content. The tooltip can will be dismissed
@@ -17,9 +18,14 @@ typedef ContentBuilder = Widget Function(BuildContext context, Widget content);
 /// is set to true. The effect is to mimic the behavior of a traditional modal
 /// that is only closed by tapping on the target widget or outside the screen.
 /// {@endtemplate}
+///
+/// This is the interface implemented by [AlignedTooltip] and
+/// [AlignedTooltipEntry].
 abstract class AlignedTooltipInterface extends StatefulWidget {
-  const AlignedTooltipInterface({Key? key}) : super(key: key);
+  /// Abstract const constructor, for subclasses.
+  const AlignedTooltipInterface({super.key});
 
+  /// The default [animatedTransitionBuilder]: fades the tooltip in and out.
   static SingleChildRenderObjectWidget defaultAnimatedTransitionBuilder(
     BuildContext context,
     Animation<double> animation,
@@ -91,15 +97,16 @@ abstract class AlignedTooltipInterface extends StatefulWidget {
   /// any event handling logic as it will be wrapped necessary handlers.
   ///
   /// This widget will trigger the tooltip either through an `onTap` in the
-  /// `isModal` is true case or through a mouse enter event with a `MouseRegion`
-  /// in the `isModal` is false case.
+  /// `isModal` is true case, or through a long press or a tap (see
+  /// [triggerMode]) and a mouse enter event with a `MouseRegion` in the
+  /// `isModal` is false case.
   Widget get child;
 
   /// Called when the tooltip is dismissed either by waiting the specified
-  /// [duration] or by tapping on the scrim.
+  /// [showDuration] or by tapping on the scrim.
   VoidCallback? get onDismiss;
 
-  /// Called when the tooltip is shown.
+  /// Called when the tooltip is shown, once its fade in animation completed.
   VoidCallback? get onShow;
 
   /// If true, once the tooltip is opened, it will not close after a set
@@ -119,7 +126,10 @@ abstract class AlignedTooltipInterface extends StatefulWidget {
   /// is released or mouse pointer exits the widget.
   ///
   /// Defaults to 1.5 seconds for long press released or 0.1 seconds for mouse
-  /// pointer exits the widget.
+  /// pointer exits the widget. If [hoverShowDuration] is not null, it is used
+  /// when the mouse pointer exits the widget instead.
+  ///
+  /// If null, [TooltipThemeData.showDuration] is used.
   ///
   /// Copied from [Tooltip]
   Duration? get showDuration;
@@ -131,12 +141,20 @@ abstract class AlignedTooltipInterface extends StatefulWidget {
   /// [TooltipTriggerMode.longPress].
   TooltipTriggerMode? get triggerMode;
 
-  /// The option to hide the tooltip.
+  /// How the default barrier of a modal tooltip handles hit testing.
   ///
-  /// If [barrierDismissible] is true, then tooltip might be hidden
-  /// by clicking outside tooltip. True is default.
-  /// If [barrierDismissible] is false, it can be hidden only manually
-  /// by using [controller.hideTooltip].
+  /// Tapping the barrier always dismisses the tooltip, whatever the value of
+  /// this flag. If true (the default), the barrier is hit tested with
+  /// [HitTestBehavior.translucent], otherwise with
+  /// [HitTestBehavior.deferToChild]. With the default barrier, which is filled
+  /// with [barrierColor], the barrier absorbs the tap in both cases: the
+  /// widgets behind it do not receive it.
+  ///
+  /// A barrier that cannot be dismissed by tapping it may be offered as a
+  /// separate option in a future version. Until then, a [barrierBuilder] can
+  /// be used to build a barrier that ignores taps.
+  ///
+  /// Only used when [isModal] is true and [barrierBuilder] is null.
   bool get barrierDismissible;
 
   /// A widget to be displayed between the tooltip and app's content.
@@ -153,8 +171,8 @@ abstract class AlignedTooltipInterface extends StatefulWidget {
   ///
   /// This is most often a tapable container with a semi-opaque color:
   ///
-  /// ```
-  ///   barrierBuilder: (context, dismissTooltip) {
+  /// ```dart
+  ///   barrierBuilder: (context, animation, dismissTooltip) {
   ///     return GestureDetector(
   ///       onTap: dismissTooltip,
   ///       child: Container(color: Colors.black38), // black38 has 38% opacity
@@ -179,14 +197,22 @@ abstract class AlignedTooltipInterface extends StatefulWidget {
   ///  * [Feedback], for providing platform-specific feedback to certain actions.
   bool? get enableFeedback;
 
-  // FIXME: This happens in the non-hover (i.e. isModal) case as well.
-  /// The amount of time before the tooltip is shown in the hover state.
+  /// The length of time that the tooltip stays visible after the mouse
+  /// pointer exits the widget.
+  ///
+  /// This delay is also used when the tooltip is hidden in other ways than a
+  /// long press or tap release, for example when the barrier of a modal
+  /// tooltip is tapped or when [AlignedTooltipController.hideTooltip] is
+  /// called without `immediately`.
+  ///
+  /// Defaults to [showDuration], or 0.1 seconds if both are null.
   Duration? get hoverShowDuration;
 
   /// An axis that you want to place the tooltip along. Note that if there
   /// is not enough space on that axis, the layout algorithm might decide to
   /// place it along the opposite axis. If not enough space exists on both
-  /// sides, a constraints error will be thrown.
+  /// sides, the tooltip is placed on the preferred side and its [content] is
+  /// constrained to the available space.
   AxisDirection get preferredDirection;
 
   /// The amount of time the tooltip takes to fade into view after a hover in or
@@ -230,18 +256,27 @@ abstract class AlignedTooltipInterface extends StatefulWidget {
   TailBuilder get tailBuilder;
 
   /// A customizable builder that can be used to define the transition the
-  /// tooltip uses when animating into view
+  /// tooltip uses when animating into view.
+  ///
+  /// Currently not used: the tooltip always fades in and out, see [curve],
+  /// [reverseCurve], [fadeInDuration] and [fadeOutDuration].
   AnimatedTransitionBuilder get animatedTransitionBuilder;
 
   // TODO: The tail should be able to be colored a different color but should
   // default to this color.
   /// The background color of the tooltip. This includes the tail.
+  ///
+  /// Defaults to the [ThemeData.cardColor] of the ambient [Theme].
   Color? get backgroundColor;
 
-  /// The text direction that will `resolve` the [content] of the tooltip.
+  /// The text direction that will `resolve` the [content] of the tooltip, as
+  /// well as the [margin] and the [borderRadius].
   TextDirection get textDirection;
 
   /// A custom shadow that can be used to add behind the tooltip
+  ///
+  /// Defaults to a shadow of the [ThemeData.shadowColor] of the ambient
+  /// [Theme].
   Shadow? get shadow;
 
   /// When the target of the tooltip, the [child], goes out of the viewport

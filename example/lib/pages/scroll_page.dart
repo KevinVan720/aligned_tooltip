@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:aligned_tooltip/aligned_tooltip.dart';
+import 'package:flutter/material.dart';
 
 class ScrollExamplePage extends StatelessWidget {
-  const ScrollExamplePage({Key? key}) : super(key: key);
+  const ScrollExamplePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,18 +17,6 @@ class ScrollExamplePage extends StatelessWidget {
               tailLength: 10.0,
               isModal: true,
               preferredDirection: AxisDirection.down,
-              child: const Material(
-                color: Colors.blue,
-                shape: CircleBorder(),
-                elevation: 4.0,
-                child: Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Icon(
-                    Icons.touch_app,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -42,6 +30,18 @@ class ScrollExamplePage extends StatelessWidget {
                     'Quia ducimus eius magni voluptatibus ut veniam ducimus. Ullam ab qui voluptatibus quos est in. Maiores eos ab magni tempora praesentium libero. Voluptate architecto rerum vel sapiente ducimus aut cumque quibusdam. Consequatur illo et quos vel cupiditate quis dolores at.',
                   ),
                 ],
+              ),
+              child: const Material(
+                color: Colors.blue,
+                shape: CircleBorder(),
+                elevation: 4.0,
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Icon(
+                    Icons.touch_app,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             );
           }

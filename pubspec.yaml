@@ -1,20 +1,30 @@
 name: aligned_tooltip
-description: A multi directional tooltip used to display any content
-version: 0.0.1
+description: >-
+  A tooltip that shows any widget as content, aligned to its target along any
+  axis, with automatic fallback to the opposite side when space runs out.
+version: 0.0.2
 homepage: https://github.com/KevinVan720/aligned_tooltip
+repository: https://github.com/KevinVan720/aligned_tooltip
+issue_tracker: https://github.com/KevinVan720/aligned_tooltip/issues
+topics:
+  - tooltip
+  - overlay
+  - popup
+  - widget
 
 environment:
-  sdk: ">=2.17.0 <3.0.0"
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
 dev_dependencies:
-  flutter_lints: ^2.0.0
-  golden_toolkit: ^0.13.0
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+  leak_tracker_flutter_testing: ^3.0.8
 
 flutter:
   uses-material-design: true

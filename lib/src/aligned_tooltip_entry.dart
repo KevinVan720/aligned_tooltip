@@ -1,11 +1,20 @@
-part of './aligned_tooltip.dart';
+part of 'aligned_tooltip.dart';
 
 /// A Tooltip widget that delegates to creation and use of the tooltip and
 /// skrim to the outer [AlignedTooltipArea]. This class is useless if not
 /// nested within a [AlignedTooltipArea].
 ///
-/// {@macro just_the_tooltip.overlay.constructor}
-class AlignedTooltipEntry extends StatefulWidget implements AlignedTooltipInterface {
+/// {@macro aligned_tooltip.overlay.constructor}
+///
+/// Only one [AlignedTooltipEntry] of an [AlignedTooltipArea] is shown at a
+/// time: showing an entry replaces the tooltip of any other entry of the same
+/// area.
+class AlignedTooltipEntry extends StatefulWidget
+    implements AlignedTooltipInterface {
+  /// Creates a tooltip that shows [content] next to [child] in the closest
+  /// [AlignedTooltipArea].
+  ///
+  /// The parameters have the same meaning as the ones of [AlignedTooltip].
   const AlignedTooltipEntry({
     super.key,
     required this.content,
@@ -149,6 +158,11 @@ class AlignedTooltipEntry extends StatefulWidget implements AlignedTooltipInterf
 class _AlignedTooltipEntryState extends AlignedTooltipState<Widget> {
   InheritedTooltipArea? area;
 
+  /// The entry this tooltip has given to the [area]. The area only shows one
+  /// tooltip at a time, so this tooltip is shown only if the area still shows
+  /// this entry.
+  Widget? _ownEntry;
+
   @override
   Widget? get entry => area?.data.entry.value;
 
@@ -156,30 +170,53 @@ class _AlignedTooltipEntryState extends AlignedTooltipState<Widget> {
   Widget? get skrim => area?.data.skrim.value;
 
   @override
+  bool get hasEntry => _ownEntry != null && identical(entry, _ownEntry);
+
+  @override
   void didChangeDependencies() {
     // I must save a reference to the ancestor here because this is not callable
     // in dispose.
-    area = context.dependOnInheritedWidgetOfExactType<InheritedTooltipArea>();
+    final newArea =
+        context.dependOnInheritedWidgetOfExactType<InheritedTooltipArea>();
+    if (newArea?.data != area?.data) {
+      area?.data.entry.removeListener(_handleAreaEntryChanged);
+      newArea?.data.entry.addListener(_handleAreaEntryChanged);
+    }
+    area = newArea;
 
     super.didChangeDependencies();
+  }
+
+  /// Called when the tooltip shown by the [area] changes.
+  void _handleAreaEntryChanged() {
+    if (_ownEntry == null || identical(entry, _ownEntry)) {
+      return;
+    }
+
+    // The tooltip of another entry replaced this one.
+    _ownEntry = null;
+    cancelShowTimer();
+    cancelHideTimer();
+    widget.onDismiss?.call();
+    if (mounted) {
+      _controller.value = TooltipStatus.isHidden;
+      _animationController.reset();
+    }
   }
 
   @override
   Future<bool> ensureTooltipVisible() async {
     cancelShowTimer();
 
+    if (!mounted) {
+      return false;
+    }
+
     if (hasEntry) {
       cancelHideTimer();
 
-      // This checks if the current entry and the entry from the area are the
-      // same
-      if (entry!.key == entryKey) {
-        await _animationController.forward();
-        return false; // Already visible.
-      } else {
-        _animationController.reset();
-        return true; // Wrong tooltip was visible
-      }
+      await _animationController.forward();
+      return false; // Already visible.
     }
 
     _createNewEntries();
@@ -189,20 +226,25 @@ class _AlignedTooltipEntryState extends AlignedTooltipState<Widget> {
 
   @override
   void _createNewEntries() {
+    final tooltipArea = area?.data ?? AlignedTooltipArea.of(context);
     final entry = _createEntry();
-    final skrim = _createSkrim();
+    // Only modal tooltips have a skrim, like [AlignedTooltip].
+    final skrim = widget.isModal ? _createSkrim() : null;
 
-    final tooltipArea = AlignedTooltipArea.of(context);
-
+    _ownEntry = entry;
     tooltipArea.setEntries(entry: entry, skrim: skrim);
   }
 
   void _updateEntries() {
+    final tooltipArea = area?.data;
+    if (!mounted || !hasEntry || tooltipArea == null) {
+      return;
+    }
+
     final entry = _createEntry();
-    final skrim = _createSkrim();
+    final skrim = widget.isModal ? _createSkrim() : null;
 
-    final tooltipArea = AlignedTooltipArea.of(context);
-
+    _ownEntry = entry;
     tooltipArea.updateEntries(entry: entry, skrim: skrim);
   }
 
@@ -211,15 +253,24 @@ class _AlignedTooltipEntryState extends AlignedTooltipState<Widget> {
     cancelHideTimer();
     cancelShowTimer();
 
-    area?.data.removeEntries();
+    // Never remove the tooltip of another entry of the same area.
+    if (hasEntry) {
+      _ownEntry = null;
+      area?.data.removeEntries();
+    }
+    _ownEntry = null;
   }
 
   @override
-  void didUpdateWidget(covariant AlignedTooltipInterface oldWidget) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  void _markEntriesNeedsBuild() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       _updateEntries();
     });
+  }
 
-    super.didUpdateWidget(oldWidget);
+  @override
+  void dispose() {
+    area?.data.entry.removeListener(_handleAreaEntryChanged);
+    super.dispose();
   }
 }

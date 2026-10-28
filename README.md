@@ -10,6 +10,12 @@ Right now this package is a direct fork of this package: https://pub.dev/package
 
 ```dart
 AlignedTooltip(
+  content: const Padding(
+    padding: EdgeInsets.all(8.0),
+    child: Text(
+      'Bacon ipsum dolor amet kevin turducken brisket pastrami, salami ribeye spare ribs tri-tip sirloin shoulder venison shank burgdoggen chicken pork belly. Short loin filet mignon shoulder rump beef ribs meatball kevin.',
+    ),
+  ),
   child: Material(
     color: Colors.grey.shade800,
     shape: const CircleBorder(),
@@ -22,21 +28,15 @@ AlignedTooltip(
       ),
     ),
   ),
-  content: const Padding(
-    padding: EdgeInsets.all(8.0),
-    child: Text(
-      'Bacon ipsum dolor amet kevin turducken brisket pastrami, salami ribeye spare ribs tri-tip sirloin shoulder venison shank burgdoggen chicken pork belly. Short loin filet mignon shoulder rump beef ribs meatball kevin.',
-    ),
-  ),
 )
 ```
 
-AlignedTooltip needs two arguments. The direct child widget and the content (of the tooltip).  The `child` widget will be wrapped with a `GestureDetector` or `MouseRegion` that is responsible for showing and hiding the content. Further handling of the tooltip state can be managed explicitly through a controller:
+AlignedTooltip needs two arguments. The direct child widget and the content (of the tooltip).  The `child` widget will be wrapped with a `GestureDetector` and a `MouseRegion` that are responsible for showing and hiding the content. By default, the tooltip is shown when the `child` is long pressed or hovered with a mouse; use `triggerMode` (or the ambient `TooltipTheme`) to show it on tap instead. Further handling of the tooltip state can be managed explicitly through a controller:
 
-If you'd like to create a controller to manage the state of the tooltip, you can do so by defining an instance of a `AlignedController` and pass it through to constructor.
+If you'd like to create a controller to manage the state of the tooltip, you can do so by defining an instance of a `AlignedTooltipController` and pass it through to constructor. Like other controllers, dispose it when you no longer need it.
 
 ```dart
-final tooltipController = AlignedController();
+final tooltipController = AlignedTooltipController();
 
 child: AlignedTooltip(
   controller: tooltipController,
@@ -44,7 +44,7 @@ child: AlignedTooltip(
 )
 
 void showTooltip() {
-  controller.showTooltip();
+  tooltipController.showTooltip();
 }
 ```
 
@@ -53,15 +53,22 @@ The controller itself is a `ValueNotifier` that carries the open/close state of 
 ```dart
 @override
 void initState() {
+  super.initState();
   // Programatically display tooltip after two seconds
   Future.delayed(const Duration(seconds: 2), () {
     tooltipController.showTooltip(immediately: false);
   });
 
   tooltipController.addListener(() {
-    // Prints the enum value of [TooltipStatus.isShowing] or [TooltipStatus.isHiding]
+    // Prints the enum value of [TooltipStatus.isShowing] or [TooltipStatus.isHidden]
     print('controller: ${tooltipController.value}');
   });
+}
+
+@override
+void dispose() {
+  tooltipController.dispose();
+  super.dispose();
 }
 ```
 
@@ -74,11 +81,13 @@ AlignedTooltip(
   },
   onShow: () {
     // Start animation?
-  }
+  },
+  content: const Text('Tooltip content'),
+  child: const Icon(Icons.info),
 ),
 ```
 
-If you'd like to keep the user from dismissing the tooltip by clicking on the barrier, you can change `barrierDismissible` to `true` which means pressing on the scrim area will not immediately hide the tooltip.
+Tapping the barrier (the scrim area around a modal tooltip) always hides the tooltip. `barrierDismissible` only changes how the default barrier is hit tested (`HitTestBehavior.translucent` when `true`, the default, `HitTestBehavior.deferToChild` when `false`); with the default barrier, the tap does not reach the widgets behind it in either case. A barrier that cannot be dismissed by tapping it may come as a separate option in a future version; until then you can build your own barrier with `barrierBuilder`.
 
 ## Customization
 
@@ -91,12 +100,12 @@ __Note, phone emulators do not implement mouse controls. To test hover states, u
 The fallback used when no mouse region is present but `isModal` is false is to only open when long pressed.
 
 <p>  
- <img src="https://github.com/Nolence/just_the_tooltip/blob/main/screenshots/ezgif-2-f7d77a21f161.gif?raw=true" width="320" height="568"/>
+ <img src="https://raw.githubusercontent.com/KevinVan720/aligned_tooltip/main/screenshots/ezgif-2-f7d77a21f161.gif" width="320" height="568"/>
 </p>
 
 * Tail Builder
 
-If you'd like a custom tail (the nub on the end dialog bubble) drawn on your tooltip, you can pass through your own tailBuilder. The `AlignedInterface.defaultTailBuilder` (default) shows how to simply draw and return a path for your custom tails:
+If you'd like a custom tail (the nub on the end dialog bubble) drawn on your tooltip, you can pass through your own tailBuilder. The `AlignedTooltipInterface.defaultTailBuilder` (default) shows how to simply draw and return a path for your custom tails:
 
 ```dart
 Path defaultTailBuilder(Offset tip, Offset point2, Offset point3) {
@@ -108,16 +117,16 @@ Path defaultTailBuilder(Offset tip, Offset point2, Offset point3) {
 }
 ```
 
-The library also provides a simple bezier curved tailbuilder `AlignedInterface.defaultBezierTailBuilder`.
+The library also provides a simple bezier curved tailbuilder `AlignedTooltipInterface.defaultBezierTailBuilder`.
 
 
 * ListViews
 
-The tooltip should also work in lists and follow the target through scrolling. For even more consideration of the available space in ListViews, a `ScrollController` may be passed to the `just_the_tooltip` to give the layout algorithm a hint as to how much space is before and after the scroll axis. This allows tooltips that would otherwise overflow to use up space offscreen in one of the scroll directions.
+The tooltip should also work in lists and follow the target through scrolling. For even more consideration of the available space in ListViews, a `ScrollController` may be passed to the `AlignedTooltip` (as `scrollController`) to give the layout algorithm a hint as to how much space is before and after the scroll axis. This allows tooltips that would otherwise overflow to use up space offscreen in one of the scroll directions.
 
 * Non-Overlay Tooltip
 
-For use cases where the tooltip must be a part the widget tree rather than an overlay there is a `AlignedTooltipEntry`.
+For use cases where the tooltip must be a part the widget tree rather than an overlay there is a `AlignedTooltipEntry`, which must be placed below an `AlignedTooltipArea`.
 
 ```dart
 Scaffold(
@@ -136,18 +145,6 @@ Scaffold(
                   preferredDirection: AxisDirection.down,
                   isModal: true,
                   margin: const EdgeInsets.all(20.0),
-                  child: const Material(
-                    color: Colors.blue,
-                    shape: CircleBorder(),
-                    elevation: 4.0,
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Icon(
-                        Icons.touch_app,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -161,6 +158,18 @@ Scaffold(
                         'Quia ducimus eius magni voluptatibus ut veniam ducimus. Ullam ab qui voluptatibus quos est in. Maiores eos ab magni tempora praesentium libero. Voluptate architecto rerum vel sapiente ducimus aut cumque quibusdam. Consequatur illo et quos vel cupiditate quis dolores at.',
                       ),
                     ],
+                  ),
+                  child: const Material(
+                    color: Colors.blue,
+                    shape: CircleBorder(),
+                    elevation: 4.0,
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(
+                        Icons.touch_app,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 );
               }
@@ -179,10 +188,10 @@ Scaffold(
 );
 ```
 
-This will give you the positioned tooltip and scrim (an empty gesture detector that catches tap events and closes the tooltip) for you to enter into the tree however you like. By doing this, you can make tooltips that are visually "under" other parts of the UI such as the appbar in the above example.
+This will give you the positioned tooltip and scrim (an empty gesture detector that catches tap events and closes the tooltip, only used by modal tooltips) for you to enter into the tree however you like. By doing this, you can make tooltips that are visually "under" other parts of the UI such as the appbar in the above example. An area shows one tooltip at a time.
 
 <p>  
- <img src="https://github.com/Nolence/just_the_tooltip/blob/main/screenshots/scrolling_example.gif?raw=true" width="320" height="568"/>
+ <img src="https://raw.githubusercontent.com/KevinVan720/aligned_tooltip/main/screenshots/scrolling_example.gif" width="320" height="568"/>
 </p>
 
 API subject to change.

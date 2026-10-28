@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:aligned_tooltip/aligned_tooltip.dart';
+import 'package:flutter/material.dart';
 
 class TooltipAreaExamplePage extends StatefulWidget {
-  const TooltipAreaExamplePage({Key? key}) : super(key: key);
+  const TooltipAreaExamplePage({super.key});
 
   @override
   State<TooltipAreaExamplePage> createState() => _TooltipAreaExamplePageState();
@@ -50,18 +50,6 @@ class _TooltipAreaExamplePageState extends State<TooltipAreaExamplePage> {
                         margin: const EdgeInsets.all(16.0),
                         borderRadius: const BorderRadius.all(
                           Radius.circular(16.0),
-                        ),
-                        child: const Material(
-                          color: Colors.blue,
-                          shape: CircleBorder(),
-                          elevation: 4.0,
-                          child: Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Icon(
-                              Icons.touch_app,
-                              color: Colors.white,
-                            ),
-                          ),
                         ),
                         content: Padding(
                           padding: const EdgeInsets.all(8.0),
@@ -112,6 +100,18 @@ class _TooltipAreaExamplePageState extends State<TooltipAreaExamplePage> {
                                 ],
                               )
                             ],
+                          ),
+                        ),
+                        child: const Material(
+                          color: Colors.blue,
+                          shape: CircleBorder(),
+                          elevation: 4.0,
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Icon(
+                              Icons.touch_app,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       );

@@ -1,4 +1,8 @@
-**/test/goldens
-**/test/failures
-example/
+# When this file exists, pub does not use the .gitignore of this directory, so
+# generated files must be listed here too.
+.dart_tool/
+build/
+**/doc/api/
+**/failures/
 screenshots/
+example/ios/Flutter/ephemeral/

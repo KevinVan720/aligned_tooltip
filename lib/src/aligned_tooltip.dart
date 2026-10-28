@@ -1,14 +1,18 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:aligned_tooltip/aligned_tooltip.dart';
 import 'package:aligned_tooltip/src/models/target_information.dart';
 import 'package:aligned_tooltip/src/positioned_tooltip.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 part 'aligned_tooltip_entry.dart';
 
+/// Signature of [AlignedTooltipController.showTooltip].
+///
+/// If `immediately` is true, the tooltip is shown on the next frame instead of
+/// after [AlignedTooltipInterface.waitDuration].
 typedef ShowTooltip = Future<void> Function({
   bool immediately,
 
@@ -16,12 +20,40 @@ typedef ShowTooltip = Future<void> Function({
   bool autoClose,
 });
 
+/// Signature of [AlignedTooltipController.hideTooltip].
+///
+/// If `immediately` is true, the tooltip is removed without waiting and
+/// without a fade out animation.
 typedef HideTooltip = Future<void> Function({bool immediately});
 
 /// {@macro aligned_tooltip.overlay.constructor}
+///
+/// The tooltip is inserted in the closest [Overlay] (for example the one of
+/// the [Navigator] of a [MaterialApp]). Use [AlignedTooltipEntry] together
+/// with an [AlignedTooltipArea] to place the tooltip somewhere else in the
+/// widget tree.
+///
+/// {@tool snippet}
+///
+/// ```dart
+/// AlignedTooltip(
+///   preferredDirection: AxisDirection.up,
+///   content: const Padding(
+///     padding: EdgeInsets.all(8.0),
+///     child: Text('Some helpful text'),
+///   ),
+///   child: const Icon(Icons.info),
+/// )
+/// ```
+/// {@end-tool}
 class AlignedTooltip extends StatefulWidget implements AlignedTooltipInterface {
+  /// Creates a tooltip that shows [content] next to [child].
+  ///
+  /// By default the tooltip is shown when [child] is long pressed or hovered
+  /// with a mouse, below [child] if there is enough space and above it
+  /// otherwise.
   const AlignedTooltip({
-    Key? key,
+    super.key,
     required this.content,
     required this.child,
     this.onDismiss,
@@ -58,7 +90,7 @@ class AlignedTooltip extends StatefulWidget implements AlignedTooltipInterface {
     this.shadow,
     this.showWhenUnlinked = false,
     this.scrollController,
-  }) : super(key: key);
+  });
 
   @override
   final AlignedTooltipController? controller;
@@ -100,7 +132,6 @@ class AlignedTooltip extends StatefulWidget implements AlignedTooltipInterface {
   final Widget Function(BuildContext, Animation<double>, VoidCallback)?
       barrierBuilder;
 
-  // FIXME: This happens in the non-hover (i.e. isModal) case as well.
   @override
   final Duration? hoverShowDuration;
 
@@ -174,6 +205,10 @@ class _AlignedTooltipOverlayState extends AlignedTooltipState<OverlayEntry> {
   Future<bool> ensureTooltipVisible() async {
     cancelShowTimer();
 
+    if (!mounted) {
+      return false;
+    }
+
     // Already visible.
     if (hasEntry) {
       cancelHideTimer();
@@ -199,35 +234,25 @@ class _AlignedTooltipOverlayState extends AlignedTooltipState<OverlayEntry> {
 
   @override
   void _createNewEntries() {
-    // The builder on these run twice on hot reload and then again from our
-    // didUpdateWidget.
-    final entryOverlay = OverlayEntry(
-      builder: (context) => _createEntry(),
-    );
-    final skrimOverlay = OverlayEntry(builder: (context) => _createSkrim());
-
     final overlay = Overlay.maybeOf(context);
 
     if (overlay == null) {
       throw StateError('Cannot find the overlay for the context $context');
     }
 
-    setState(
-      () {
-        // In the case of a modal, we enter a skrim overlay to catch taps
-        if (widget.isModal) {
-          entry = entryOverlay;
-          skrim = skrimOverlay;
+    final entryOverlay = OverlayEntry(builder: (context) => _createEntry());
+    entry = entryOverlay;
 
-          overlay.insert(skrimOverlay);
-          overlay.insert(entryOverlay, above: skrimOverlay);
-        } else {
-          entry = entryOverlay;
+    // In the case of a modal, we enter a skrim overlay to catch taps.
+    if (widget.isModal) {
+      final skrimOverlay = OverlayEntry(builder: (context) => _createSkrim());
+      skrim = skrimOverlay;
 
-          overlay.insert(entryOverlay);
-        }
-      },
-    );
+      overlay.insert(skrimOverlay);
+      overlay.insert(entryOverlay, above: skrimOverlay);
+    } else {
+      overlay.insert(entryOverlay);
+    }
   }
 
   @override
@@ -235,43 +260,52 @@ class _AlignedTooltipOverlayState extends AlignedTooltipState<OverlayEntry> {
     cancelHideTimer();
     cancelShowTimer();
 
-    entry?.remove();
+    final entry = this.entry;
+    final skrim = this.skrim;
+    this.entry = null;
+    this.skrim = null;
 
-    if (widget.isModal) {
-      skrim?.remove();
-    }
-
-    entry = null;
-
-    if (widget.isModal) {
-      skrim = null;
+    // The skrim is removed even if the tooltip is no longer modal: it might
+    // have been inserted before [AlignedTooltip.isModal] changed.
+    for (final overlayEntry in [entry, skrim]) {
+      overlayEntry
+        ?..remove()
+        ..dispose();
     }
   }
 
-// @override
-// void didUpdateWidget(covariant AlignedTooltip oldWidget) {
-//   super.didUpdateWidget(oldWidget);
-
-//   // This adds a post frame callback because otherwise the OverlayEntry
-//   // builder would run before the widget has a chance to update with the
-//   // newest config.
-//   WidgetsBinding.instance?.addPostFrameCallback((_) {
-//     if (mounted) {
-//       entry?.markNeedsBuild();
-//       skrim?.markNeedsBuild();
-//     }
-//   });
-// }
+  @override
+  void _markEntriesNeedsBuild() {
+    // The entries live in the overlay and are not rebuilt when this widget
+    // rebuilds. The overlay cannot be marked as dirty during the build of this
+    // widget, so it is done right after.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      entry?.markNeedsBuild();
+      skrim?.markNeedsBuild();
+    });
+  }
 }
 
-/// This is almost a one to one mapping to [Tooltip]'s [_TooltipState] except
-/// for the fact it is setup to handle two Tooltip cases. Abstract methods are
-/// replaced with implementations that are specific to the tooltip type.
+/// This is almost a one to one mapping to [Tooltip]'s state except for the
+/// fact it is setup to handle two Tooltip cases. Abstract methods are replaced
+/// with implementations that are specific to the tooltip type.
+///
+/// [T] is the type of the entries inserted in the tree to show the tooltip:
+/// [OverlayEntry] for [AlignedTooltip] and [Widget] for [AlignedTooltipEntry].
 // TODO: This looks more idiomatic as a mixin.
 abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
     with SingleTickerProviderStateMixin {
+  /// Abstract constructor, for the states of [AlignedTooltip] and
+  /// [AlignedTooltipEntry].
+  AlignedTooltipState();
+
+  /// The entry showing the tooltip content, if any.
   T? get entry;
 
+  /// The entry showing the barrier behind the tooltip, if any.
   T? get skrim;
 
   /// Shows the tooltip if it is not already visible.
@@ -291,13 +325,19 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
   /// Removes the tooltip entry and tooltip entry.
   void _removeEntries();
 
+  /// Rebuilds the visible entries with the current configuration.
+  void _markEntriesNeedsBuild();
+
+  /// Whether this tooltip is currently shown.
   bool get hasEntry => entry != null;
 
+  /// A key derived from the key of the widget, if any.
   Key? get entryKey {
     final key = widget.key;
     return key == null ? null : ValueKey('__entry_${key}__');
   }
 
+  /// A key derived from the key of the widget used for the barrier, if any.
   Key? get skrimKey {
     final key = widget.key;
     return key == null ? null : Key('__skrim_${key}__');
@@ -312,38 +352,51 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
   static const bool _defaultEnableFeedback = true;
 
   late final AnimationController _animationController;
+  late final CurvedAnimation _fadeAnimation;
   Timer? _hideTimer;
   Timer? _showTimer;
+
+  /// How long the tooltip stays visible after a long press or a tap is
+  /// released. Resolved in [build].
   late Duration showDuration;
+
+  /// How long the tooltip stays visible after the mouse exits the target or
+  /// after the tooltip is hidden without `immediately`. Resolved in [build].
   late Duration hoverShowDuration;
+
+  /// How long a pointer must hover the target before the tooltip is shown.
+  /// Resolved in [build].
   late Duration waitDuration;
-  late bool _mouseIsConnected = false;
+
   bool _pressActivated = false;
+
+  /// The resolved trigger mode. Resolved in [build].
   late TooltipTriggerMode triggerMode;
+
+  /// Whether feedback is provided when the tooltip is triggered. Resolved in
+  /// [build].
   late bool enableFeedback;
+
+  /// The value of [AlignedTooltipInterface.barrierDismissible].
   late bool barrierDismissible;
+
+  /// The value of [AlignedTooltipInterface.barrierColor].
   late Color barrierColor;
+
+  /// The value of [AlignedTooltipInterface.barrierBuilder].
   late Widget Function(BuildContext, Animation<double>, VoidCallback)?
       barrierBuilder;
 
   // These properties are specific to aligned_tooltip
-  // static const Curve _defaultAnimateCurve = Curves.linear;
-  // static const Duration _defaultAnimateDuration = Duration(milliseconds: 1000);
   late AlignedTooltipController _controller;
-  late bool _hasBindingListeners = false;
+  bool _hasBindingListeners = false;
   final _layerLink = LayerLink();
 
   @override
   void initState() {
     super.initState();
-    // Handles mouse connection and global tap gestures.
+    // Handles global tap gestures.
     if (!widget.isModal) {
-      // RendererBinding.instance!.mouseTracker.addListener seems to have a bug
-      // if you move the mouse as the page is loading, the listener never gets
-      // called. Set mouseConnected here as a work around
-      _mouseIsConnected =
-          RendererBinding.instance.mouseTracker.mouseIsConnected;
-
       _addBindingListeners();
     }
 
@@ -352,6 +405,11 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
       reverseDuration: widget.fadeOutDuration,
       vsync: this,
     )..addStatusListener(_handleStatusChanged);
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: widget.curve,
+      reverseCurve: widget.reverseCurve,
+    );
 
     _controller = widget.controller ?? AlignedTooltipController();
     _attachController(_controller);
@@ -367,26 +425,32 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The entries use the theme of this widget.
+    _markEntriesNeedsBuild();
+  }
+
+  @override
   void didUpdateWidget(covariant AlignedTooltipInterface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
     final oldController = oldWidget.controller;
     final newController = widget.controller;
 
-    // If we did not have a controller before, we created one that must now be
-    // disposed. The user must also have passed in a controller or else we
-    // won't do anything.
-    if (oldController == null && newController != null) {
-      // The user provided a controller, let's dispose ours
-      _controller.dispose();
-      _controller = newController;
+    if (oldController != newController) {
+      // If we did not have a controller before, we created one that must now
+      // be disposed.
+      if (oldController == null) {
+        _controller.dispose();
+      }
+      _controller = newController ??
+          AlignedTooltipController(
+            value: hasEntry ? TooltipStatus.isShowing : TooltipStatus.isHidden,
+          );
     }
 
     // Update the functions on our controller
-    if (newController != null && oldController != null) {
-      if (newController.value != oldController.value) {
-        _controller.value = newController.value;
-      }
-    }
-
     _attachController(_controller);
 
     if (oldWidget.isModal != widget.isModal) {
@@ -397,7 +461,14 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
       }
     }
 
-    super.didUpdateWidget(oldWidget);
+    _animationController
+      ..duration = widget.fadeInDuration
+      ..reverseDuration = widget.fadeOutDuration;
+    _fadeAnimation
+      ..curve = widget.curve
+      ..reverseCurve = widget.reverseCurve;
+
+    _markEntriesNeedsBuild();
   }
 
   void _addBindingListeners() {
@@ -405,39 +476,22 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
 
     _hasBindingListeners = true;
 
-    // Listen to see when a mouse is added.
-    RendererBinding.instance.mouseTracker
-        .addListener(_handleMouseTrackerChange);
     // Listen to global pointer events so that we can hide a tooltip immediately
     // if some other control is clicked on.
     GestureBinding.instance.pointerRouter.addGlobalRoute(_handlePointerEvent);
   }
 
   void _removeBindingListeners() {
-    if (_hasBindingListeners) _hasBindingListeners = false;
-    RendererBinding.instance.mouseTracker
-        .removeListener(_handleMouseTrackerChange);
+    if (!_hasBindingListeners) return;
+
+    _hasBindingListeners = false;
+
     GestureBinding.instance.pointerRouter
         .removeGlobalRoute(_handlePointerEvent);
   }
 
-  void _handleMouseTrackerChange() {
-    if (!mounted) {
-      return;
-    }
-
-    final mouseIsConnected =
-        RendererBinding.instance.mouseTracker.mouseIsConnected;
-
-    if (mouseIsConnected != _mouseIsConnected) {
-      setState(() {
-        _mouseIsConnected = mouseIsConnected;
-      });
-    }
-  }
-
   void _handleStatusChanged(AnimationStatus status) {
-    if (status == AnimationStatus.dismissed) {
+    if (status == AnimationStatus.dismissed && hasEntry) {
       _hideTooltip(immediately: true);
     }
   }
@@ -446,37 +500,45 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
   /// the tooltip will be hidden immediately. Otherwise, the tooltip will be
   /// hidden after the current animation completes. In either case,
   /// this future will complete once the tooltip has been completely hidden.
-  Future<void> _hideTooltip({bool immediately = false}) async {
+  Future<void> _hideTooltip({bool immediately = false}) {
     cancelShowTimer();
 
     final completer = Completer<void>();
     final future = completer.future;
 
     if (immediately) {
-      widget.onDismiss?.call();
+      final wasShowing = hasEntry;
+
+      if (wasShowing) {
+        widget.onDismiss?.call();
+      }
 
       if (mounted) {
         _controller.value = TooltipStatus.isHidden;
       }
 
       _removeEntries();
+
+      // Next time the tooltip is shown, it fades in again.
+      if (mounted) {
+        _animationController.reset();
+      }
+
       completer.complete();
       return future;
     }
 
-    if (_pressActivated) {
-      _hideTimer ??= Timer(showDuration, () async {
+    Future<void> reverse() async {
+      if (mounted) {
         await _animationController.reverse();
-        completer.complete();
-      });
+      }
+      completer.complete();
+    }
+
+    if (_pressActivated) {
+      _hideTimer ??= Timer(showDuration, reverse);
     } else {
-      _hideTimer ??= Timer(
-        hoverShowDuration,
-        () async {
-          await _animationController.reverse();
-          completer.complete();
-        },
-      );
+      _hideTimer ??= Timer(hoverShowDuration, reverse);
     }
 
     _pressActivated = false;
@@ -491,19 +553,23 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
     /// to show the tooltip as a regular pointer event will cause a pointer up
     /// event to be fired, which in turn will set a hide timer.
     bool autoClose = false,
-  }) async {
+  }) {
+    if (!mounted) {
+      return Future<void>.value();
+    }
+
     cancelHideTimer();
 
     final completer = Completer<void>();
     final future = completer.future.then((_) {
-      widget.onShow?.call();
+      if (!mounted) {
+        return;
+      }
 
-      if (mounted) {
-        _controller.value = TooltipStatus.isShowing;
+      _handleShown();
 
-        if (autoClose) {
-          _hideTooltip();
-        }
+      if (autoClose) {
+        _hideTooltip();
       }
     });
 
@@ -511,27 +577,42 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
       // We add a postFrameCallback here because we need run *after* the global
       // _handlePointerEvent has been called (which happens after every tap
       // event).
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await ensureTooltipVisible();
-        completer.complete();
-      });
+      SchedulerBinding.instance
+        ..addPostFrameCallback((_) async {
+          if (mounted) {
+            await ensureTooltipVisible();
+          }
+          completer.complete();
+        })
+        // Post frame callbacks do not schedule a frame by themselves.
+        ..ensureVisualUpdate();
 
       return future;
     }
 
     _showTimer ??= Timer(waitDuration, () async {
-      await ensureTooltipVisible();
+      if (mounted) {
+        await ensureTooltipVisible();
+      }
       completer.complete();
     });
 
     return future;
   }
 
+  /// Called once the tooltip is fully visible.
+  void _handleShown() {
+    widget.onShow?.call();
+    _controller.value = TooltipStatus.isShowing;
+  }
+
+  /// Cancels the timer that will show the tooltip, if any.
   void cancelShowTimer() {
     _showTimer?.cancel();
     _showTimer = null;
   }
 
+  /// Cancels the timer that will hide the tooltip, if any.
   void cancelHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = null;
@@ -551,7 +632,7 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
 
   @override
   void deactivate() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       if (hasEntry) {
         _hideTooltip(immediately: true);
       }
@@ -564,20 +645,22 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
 
   @override
   void dispose() {
-    if (_hasBindingListeners) {
-      _removeBindingListeners();
-    }
+    _removeBindingListeners();
+    cancelShowTimer();
+    cancelHideTimer();
 
+    _fadeAnimation.dispose();
     _animationController.dispose();
 
-    /// If we've made our own controller because the user's is null, we need to
-    /// dispose of it.
+    // If we've made our own controller because the user's is null, we need to
+    // dispose of it.
     if (widget.controller == null) {
       _controller.dispose();
     }
 
-    // Involves setState so we do it in a post frame callback
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // The entries are removed after the frame, see [deactivate]. This makes
+    // sure they are removed even if they were not shown anymore by then.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       _removeEntries();
     });
 
@@ -586,14 +669,20 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
 
   Future<void> _handlePress() async {
     _pressActivated = true;
-    final tooltipCreated = await ensureTooltipVisible();
 
+    final tooltipCreated = !hasEntry;
     if (tooltipCreated && enableFeedback) {
-      if (triggerMode == TooltipTriggerMode.longPress && mounted) {
+      if (triggerMode == TooltipTriggerMode.longPress) {
         Feedback.forLongPress(context);
       } else {
         Feedback.forTap(context);
       }
+    }
+
+    await ensureTooltipVisible();
+
+    if (mounted) {
+      _handleShown();
     }
   }
 
@@ -607,7 +696,8 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
     showDuration = widget.showDuration ??
         tooltipTheme.showDuration ??
         _defaultShowDuration;
-    hoverShowDuration = widget.showDuration ??
+    hoverShowDuration = widget.hoverShowDuration ??
+        widget.showDuration ??
         tooltipTheme.showDuration ??
         _defaultHoverShowDuration;
     triggerMode =
@@ -640,7 +730,10 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
         child: widget.child,
       );
 
-      if (_mouseIsConnected) {
+      // The mouse region is always present for non modal tooltips, even
+      // without a mouse, so that the subtree is not rebuilt from scratch when
+      // a mouse is connected or disconnected.
+      if (!widget.isModal) {
         result = MouseRegion(
           onEnter: (PointerEnterEvent event) => _showTooltip(),
           onExit: (PointerExitEvent event) => _hideTooltip(),
@@ -688,11 +781,7 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
       offset: targetInformation.offsetToTarget,
       link: _layerLink,
       child: FadeTransition(
-        opacity: CurvedAnimation(
-          parent: _animationController,
-          curve: widget.curve,
-          reverseCurve: widget.reverseCurve,
-        ),
+        opacity: _fadeAnimation,
         child: Directionality(
           textDirection: widget.textDirection,
           child: Builder(
@@ -709,8 +798,6 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
                   child: wrappedChild,
                   builder: (context, child) {
                     return PositionedTooltip(
-                      // curve: _defaultAnimateCurve,
-                      // duration: _defaultAnimateDuration,
                       animatedTransitionBuilder:
                           widget.animatedTransitionBuilder,
                       margin: widget.margin,
@@ -736,8 +823,6 @@ abstract class AlignedTooltipState<T> extends State<AlignedTooltipInterface>
               }
 
               return PositionedTooltip(
-                // curve: _defaultAnimateCurve,
-                // duration: _defaultAnimateDuration,
                 animatedTransitionBuilder: widget.animatedTransitionBuilder,
                 margin: widget.margin,
                 targetSize: targetInformation.size,

@@ -62,7 +62,7 @@ Offset getPositionDependentOffset({
         } else {
           y = math.min(
             bottomTargetEdge + offsetAndTail,
-            size.height - margin.top,
+            size.height - margin.bottom,
           );
         }
       }
@@ -76,12 +76,11 @@ Offset getPositionDependentOffset({
           margin.left,
           size.width - margin.right,
         );
-        final edge = margin.left + childSize.width / 2.0;
-
-        if (normalizedTargetX < edge) {
+        if (normalizedTargetX < margin.left + childSize.width / 2.0) {
           x = margin.left;
-        } else if (normalizedTargetX > size.width - edge) {
-          x = size.width - margin.left - childSize.width;
+        } else if (normalizedTargetX >
+            size.width - margin.right - childSize.width / 2.0) {
+          x = size.width - margin.right - childSize.width;
         } else {
           x = normalizedTargetX - childSize.width / 2.0;
         }
@@ -125,11 +124,10 @@ Offset getPositionDependentOffset({
           margin.top,
           size.height - margin.bottom,
         );
-        final edge = (margin.bottom + childSize.height) / 2.0;
-
-        if (normalizedTargetY < edge) {
-          y = margin.bottom;
-        } else if (normalizedTargetY > size.height - edge) {
+        if (normalizedTargetY < margin.top + childSize.height / 2.0) {
+          y = margin.top;
+        } else if (normalizedTargetY >
+            size.height - margin.bottom - childSize.height / 2.0) {
           y = size.height - margin.bottom - childSize.height;
         } else {
           y = normalizedTargetY - childSize.height / 2.0;
